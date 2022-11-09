@@ -1,49 +1,79 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
+library(tuicalendr) # remotes::install_github("dreamRs/tuicalendr")
+# library(toastui) # remotes::install_github("dreamRs/toastui")
 
-# Define UI for application that draws a histogram
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
+  tags$h2("Create and edit schedule"),
+  fluidRow(
+    column(
+      width = 9,
+      calendarOutput("my_calendar")
+    ),
+    column(
+      width = 3,
+      uiOutput("schedule_update")
     )
+  )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output) {
-
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    })
+  
+  output$my_calendar <- renderCalendar({
+    cal <- calendar(
+      defaultDate = Sys.Date(),
+      useNav = TRUE,
+      readOnly = FALSE,
+      useCreationPopup = TRUE
+    ) %>%
+      set_month_options(narrowWeekend = TRUE) %>%
+      add_schedule(
+        id = "r_intro",
+        calendarId = "courses",
+        title = "R - introduction",
+        body = "What is R?",
+        start = paste(Sys.Date(), "08:00:00"),
+        end = paste(Sys.Date(), "12:30:00"),
+        category = "time"
+      )
+  })
+  
+  output$schedule_update <- renderUI({
+    if (!is.null(input$my_calendar_update)) {
+      changes <- input$my_calendar_update$changes
+      tags$div(
+        "Schedule",
+        tags$b(input$my_calendar_update$schedule$id),
+        "have been updated with:",
+        tags$ul(
+          lapply(
+            seq_along(changes),
+            function(i) {
+              tags$li(
+                tags$b(names(changes)[i], ":"),
+                changes[[i]]
+              )
+            }
+          )
+        )
+      )
+    }
+  })
+  
+  observeEvent(input$my_calendar_add, {
+    cal_proxy_create(
+      proxy = "my_calendar",
+      .list = input$my_calendar_add
+    )
+  })
+  
+  observeEvent(input$my_calendar_update, {
+    cal_proxy_update(
+      proxy = "my_calendar",
+      .list = input$my_calendar_update
+    )
+  })
+  
 }
 
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)
